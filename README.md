@@ -84,6 +84,7 @@ I also recommend installing and running [WatchState](https://github.com/arabcode
 ## Notes and Limitations
 
 **Windows Only:** This has been written and tested on Windows only. If anyone wants to fork this for Docker, please feel free!
+
 **Existing Libraries:** I recommend deleting your existing library and starting from scratch, rather than re-indexing an existing library. It'll probably work, but I wasn't going to test it!
 
 ### Good luck!
