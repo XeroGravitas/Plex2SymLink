@@ -52,7 +52,7 @@ $key = Read-Host "`nEnter the Library Key for the library you want to export"
 $library_title = ($libs.MediaContainer.Directory | Where-Object { $_.key -eq $key }).title
 
 Write-Host "`nDownloading metadata.xml (this may take a moment for large libraries)..." -ForegroundColor Cyan
-$metadata_url = "$plex_ip/library/sections/$key/all?includeGuids=1&X-Plex-Token=$token"
+$metadata_url = "$plex_ip/library/sections/$key/all?type=4&includeGuids=1&X-Plex-Token=$token"
 Invoke-WebRequest -Uri $metadata_url -OutFile "metadata.xml"
 
 Write-Host "`nRunning Symlink Creator (TV_SymLinker.py)..." -ForegroundColor Cyan
