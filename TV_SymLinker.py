@@ -28,7 +28,9 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
         tree = ET.parse(input_xml)
         root = tree.getroot()
         
-        mapping_data = []
+        # Group episodes by their physical source file path to handle multi-episode files
+        # Structure: { source_file: { 'show': str, 'season': str, 'season_num': int, 'episodes': [int, ...] } }
+        file_groups = defaultdict(lambda: {'show': '', 'season': '', 'season_num': 0, 'episodes': []})
         
         for elem in root.findall(".//Video"):
             if elem.get('type') != 'episode':
@@ -42,32 +44,53 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
                 continue
                 
             safe_show_name = "".join(c for c in show_name if c not in r'<>:"/\|?*')
-            
             season_str = f"Season {int(season_num):02d}" if season_num.isdigit() else f"Season {season_num}"
-            ep_str = f"S{int(season_num):02d}E{int(episode_num):02d}" if season_num.isdigit() and episode_num.isdigit() else f"S{season_num}E{episode_num}"
-
+            
             for part in elem.findall(".//Part"):
                 source_file = part.get('file')
                 if not source_file:
                     continue
                 
-                ext = Path(source_file).suffix
-                dest_dir = os.path.join(target_root, safe_show_name, season_str)
-                dest_file = os.path.join(dest_dir, f"{safe_show_name} - {ep_str}{ext}")
+                if not file_groups[source_file]['show']:
+                    file_groups[source_file]['show'] = safe_show_name
+                    file_groups[source_file]['season'] = season_str
+                    file_groups[source_file]['season_num'] = int(season_num) if season_num.isdigit() else 1
                 
-                mapping_data.append({
-                    'show': safe_show_name,
-                    'season': season_str,
-                    'source': source_file,
-                    'target': dest_file
-                })
+                if episode_num.isdigit():
+                    file_groups[source_file]['episodes'].append(int(episode_num))
+
+        # Flatten and format into distinct mapping items
+        mapping_data = []
+        for source_file, data in file_groups.items():
+            show = data['show']
+            season_str = data['season']
+            s_num = data['season_num']
+            eps = sorted(list(set(data['episodes'])))
+            
+            if not eps:
+                continue
+                
+            # Format episode string (e.g., S01E01 or S01E01-E03)
+            if len(eps) == 1:
+                ep_str = f"S{s_num:02d}E{eps[0]:02d}"
+            else:
+                ep_str = f"S{s_num:02d}E{eps[0]:02d}-E{eps[-1]:02d}"
+                
+            ext = Path(source_file).suffix
+            dest_dir = os.path.join(target_root, show, season_str)
+            dest_file = os.path.join(dest_dir, f"{show} - {ep_str}{ext}")
+            
+            mapping_data.append({
+                'show': show,
+                'season': season_str,
+                'source': source_file,
+                'target': dest_file
+            })
 
         if mode == "audit":
             print(f"Generating hierarchical audit log for: {target_root}")
             
-            # Build a nested dictionary: {show: {season: {target_file: source_file}}}
             tree_structure = defaultdict(lambda: defaultdict(dict))
-            
             for item in mapping_data:
                 tree_structure[item['show']][item['season']][item['target']] = item['source']
                 
@@ -76,7 +99,6 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
                 
                 shows = sorted(tree_structure.keys())
                 for s_idx, show in enumerate(shows):
-                    is_last_show = (s_idx == len(shows) - 1)
                     audit_out.write(f"└── {show}\n")
                     
                     seasons = sorted(tree_structure[show].keys())
