@@ -34,7 +34,7 @@ $libraries_url = "$plex_ip/library/sections?X-Plex-Token=$token"
 try {
     [xml]$libs = Invoke-RestMethod -Uri $libraries_url
     Write-Host "`nAvailable TV Libraries:" -ForegroundColor Yellow
-    foreach ($dir in$libs.MediaContainer.Directory) {
+    foreach ($dir in $libs.MediaContainer.Directory) {
         if ($dir.type -eq "show") {
             Write-Host "  Key: $($dir.key) - $($dir.title)"
         }
