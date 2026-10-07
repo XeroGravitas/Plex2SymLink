@@ -3,6 +3,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
+from collections import defaultdict
 
 # Force Windows console to accept UTF-8 characters
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
@@ -23,18 +24,12 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
     safe_lib_name = "".join(c for c in lib_name if c not in r'<>:"/\|?*')
     target_root = os.path.join(base_dir, safe_lib_name)
     
-    audit_out = None
-    if mode == "audit":
-        print(f"Generating audit log for: {target_root}")
-        audit_out = open(AUDIT_FILE, "w", encoding="utf-8")
-        audit_out.write(f"TARGET DIRECTORY: {target_root}\n")
-        audit_out.write("-" * 60 + "\n")
-    elif mode == "execute":
-        print(f"Building Jellyfin directory structure in: {target_root}")
-    
     try:
         tree = ET.parse(input_xml)
         root = tree.getroot()
+        
+        # Structure to hold mapping for execution or hierarchical tree building for audit
+        mapping_data = []
         
         for elem in root.findall(".//Video"):
             if elem.get('type') != 'episode':
@@ -61,28 +56,65 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
                 dest_dir = os.path.join(target_root, safe_show_name, season_str)
                 dest_file = os.path.join(dest_dir, f"{safe_show_name} - {ep_str}{ext}")
                 
-                if mode == "audit":
-                    audit_out.write(f"Source: {source_file}\n")
-                    audit_out.write(f"Target: {dest_file}\n\n")
-                elif mode == "execute":
-                    try:
-                        os.makedirs(dest_dir, exist_ok=True)
-                    except Exception as e:
-                        print(f"Failed to create directory {dest_dir}: {e}")
-                        continue
-                    
-                    if not os.path.exists(dest_file):
-                        try:
-                            os.symlink(source_file, dest_file)
-                            print(f"Linked: {dest_file}")
-                        except OSError as e:
-                            print(f"\nFailed to create link for {dest_file}.")
-                            print("CRITICAL: You must enable 'Developer Mode' in Windows settings, or run PowerShell as Administrator.")
-                            print(f"Error details: {e}\n")
-                            
+                mapping_data.append({
+                    'show': safe_show_name,
+                    'season': season_str,
+                    'source': source_file,
+                    'target': dest_file
+                })
+
         if mode == "audit":
-            audit_out.close()
+            print(f"Generating hierarchical audit log for: {target_root}")
             
+            # Build a nested dictionary: {show: {season: [target_files...]}}
+            tree_structure = defaultdict(lambda: defaultdict(list))
+            source_map = {}
+            
+            for item in mapping_data:
+                tree_structure[item['show']][item['season']].append(item['target'])
+                source_map[item['target']] = item['source']
+                
+            with open(AUDIT_FILE, "w", encoding="utf-8") as audit_out:
+                audit_out.write(f"ROOT: {target_root}\n")
+                
+                for show in sorted(tree_structure.keys()):
+                    audit_out.write(f"└── {show}\n")
+                    seasons = sorted(tree_structure[show].keys())
+                    
+                    for i, season in enumerate(seasons):
+                        is_last_season = (i == len(seasons) - 1)
+                        season_prefix = "    └── " if is_last_season else "    ├── "
+                        audit_out.write(f"{season_prefix}{season}\n")
+                        
+                        episodes = sorted(tree_structure[show][season])
+                        for j, ep_path in enumerate(episodes):
+                            is_last_ep = (j == len(episodes) - 1)
+                            ep_prefix = "        └── " if is_last_ep else "        ├── "
+                            file_name = os.path.basename(ep_path)
+                            audit_out.write(f"{season_prefix.replace('├──', '│  ').replace('└──', '   ')}{ep_prefix}{file_name}\n")
+                            audit_out.write(f"{season_prefix.replace('├──', '│  ').replace('└──', '   ')}{'    ' if is_last_ep else '│   '}}]\n")
+                            
+            print("Audit tree generated successfully.")
+
+        elif mode == "execute":
+            print(f"Building Jellyfin directory structure in: {target_root}")
+            for item in mapping_data:
+                dest_dir = os.path.dirname(item['target'])
+                try:
+                    os.makedirs(dest_dir, exist_ok=True)
+                except Exception as e:
+                    print(f"Failed to create directory {dest_dir}: {e}")
+                    continue
+                
+                if not os.path.exists(item['target']):
+                    try:
+                        os.symlink(item['source'], item['target'])
+                        print(f"Linked: {item['target']}")
+                    except OSError as e:
+                        print(f"\nFailed to create link for {item['target']}.")
+                        print("CRITICAL: You must enable 'Developer Mode' in Windows settings, or run PowerShell as Administrator.")
+                        print(f"Error details: {e}\n")
+                            
     except Exception as e:
         print("\n=== SCRIPT CRASHED ===")
         traceback.print_exc()
