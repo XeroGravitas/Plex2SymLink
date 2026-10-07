@@ -1,33 +1,45 @@
 import xml.etree.ElementTree as ET
 import os
 import sys
+import traceback
 from pathlib import Path
 
+# Force Windows console to accept UTF-8 characters (crucial for Anime/foreign titles)
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 INPUT_XML = 'metadata.xml'
-TREE_FILE = 'symlink_tree.txt'
 
 def build_symlink_tree(input_xml, base_dir, lib_name):
     if not os.path.exists(input_xml):
-        print(f"Error: {input_xml} not found. Run the PowerShell extraction script first.")
+        print(f"Error: '{input_xml}' not found. Run the PowerShell extraction script first.")
         return
 
+    if os.path.getsize(input_xml) == 0:
+        print(f"CRITICAL ERROR: '{input_xml}' is 0 bytes. The Plex download timed out or failed.")
+        return
+
+    # Sanitise library name
     safe_lib_name = "".join(c for c in lib_name if c not in r'<>:"/\|?*')
     target_root = os.path.join(base_dir, safe_lib_name)
     
-    print("Parsing XML and mapping directory structure...")
+    print(f"Building Jellyfin directory structure in: {target_root}")
     
-    # 1. Build the data structure in memory
-    tv_data = {}
-    
-    context = ET.iterparse(input_xml, events=('end',))
-    for event, elem in context:
-        if elem.tag == 'Video' and elem.get('type') == 'episode':
+    try:
+        # Load the whole XML tree at once (Python handles this easily without memory crashing)
+        tree = ET.parse(input_xml)
+        root = tree.getroot()
+        
+        # Search directly for all Video tags
+        for elem in root.findall(".//Video"):
+            if elem.get('type') != 'episode':
+                continue
+                
             show_name = elem.get('grandparentTitle')
             season_num = elem.get('parentIndex')
             episode_num = elem.get('index')
             
             if not show_name or not season_num or not episode_num:
-                elem.clear()
                 continue
                 
             safe_show_name = "".join(c for c in show_name if c not in r'<>:"/\|?*')
@@ -35,50 +47,23 @@ def build_symlink_tree(input_xml, base_dir, lib_name):
             season_str = f"Season {int(season_num):02d}" if season_num.isdigit() else f"Season {season_num}"
             ep_str = f"S{int(season_num):02d}E{int(episode_num):02d}" if season_num.isdigit() and episode_num.isdigit() else f"S{season_num}E{episode_num}"
 
+            # Extract the source file path
             for part in elem.findall(".//Part"):
                 source_file = part.get('file')
                 if not source_file:
                     continue
                 
                 ext = Path(source_file).suffix
-                dest_filename = f"{safe_show_name} - {ep_str}{ext}"
                 
-                if safe_show_name not in tv_data:
-                    tv_data[safe_show_name] = {}
-                if season_str not in tv_data[safe_show_name]:
-                    tv_data[safe_show_name][season_str] = []
-                    
-                tv_data[safe_show_name][season_str].append((dest_filename, source_file))
-                        
-        elem.clear()
-        
-    # 2. Write the visual tree file
-    print(f"Writing structure map to {TREE_FILE}...")
-    with open(TREE_FILE, 'w', encoding='utf-8') as f:
-        f.write(f"{target_root}/\n")
-        for show in sorted(tv_data.keys()):
-            f.write(f"├── {show}/\n")
-            for season in sorted(tv_data[show].keys()):
-                f.write(f"│   ├── {season}/\n")
-                for dest_filename, _ in sorted(tv_data[show][season]):
-                    f.write(f"│   │   ├── {dest_filename}\n")
-                    
-    # 3. Prompt for user confirmation
-    proceed = input(f"\nTree log generated. Please review {TREE_FILE}.\nDoes the structure look correct? (Y/N): ")
-    
-    if not proceed.lower().startswith('y'):
-        print("Halting script. No folders or symlinks were created.")
-        sys.exit(0)
-
-    # 4. Build the actual folders and symlinks
-    print(f"\nBuilding Jellyfin directory structure in: {target_root}")
-    for show, seasons in tv_data.items():
-        for season, files in seasons.items():
-            dest_dir = os.path.join(target_root, show, season)
-            os.makedirs(dest_dir, exist_ok=True)
-            
-            for dest_filename, source_file in files:
-                dest_file = os.path.join(dest_dir, dest_filename)
+                dest_dir = os.path.join(target_root, safe_show_name, season_str)
+                dest_file = os.path.join(dest_dir, f"{safe_show_name} - {ep_str}{ext}")
+                
+                try:
+                    os.makedirs(dest_dir, exist_ok=True)
+                except Exception as e:
+                    print(f"Failed to create directory {dest_dir}: {e}")
+                    continue
+                
                 if not os.path.exists(dest_file):
                     try:
                         os.symlink(source_file, dest_file)
@@ -87,6 +72,12 @@ def build_symlink_tree(input_xml, base_dir, lib_name):
                         print(f"\nFailed to create link for {dest_file}.")
                         print("CRITICAL: You must enable 'Developer Mode' in Windows settings, or run PowerShell as Administrator.")
                         print(f"Error details: {e}\n")
+                        
+    except Exception as e:
+        print("\n=== SCRIPT CRASHED ===")
+        print("Here is the exact error:")
+        traceback.print_exc()
+        print("======================\n")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
