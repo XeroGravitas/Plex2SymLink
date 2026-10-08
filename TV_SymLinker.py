@@ -129,14 +129,37 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
                     print(f"Failed to create directory {dest_dir}: {e}")
                     continue
                 
-                if not os.path.exists(item['target']):
+                if os.path.lexists(item['target']):
+                    if not os.path.islink(item['target']):
+                        print(f"Skipped existing non-link target: {item['target']}")
+                        continue
+
+                    existing_source = os.readlink(item['target'])
+                    if not os.path.isabs(existing_source):
+                        existing_source = os.path.join(
+                            os.path.dirname(item['target']), existing_source
+                        )
+                    existing_source = os.path.normcase(os.path.abspath(existing_source))
+                    current_source = os.path.normcase(os.path.abspath(item['source']))
+
+                    if existing_source == current_source and os.path.exists(item['source']):
+                        print(f"Skipped existing symlink: {item['target']}")
+                        continue
+
                     try:
-                        os.symlink(item['source'], item['target'])
-                        print(f"Linked: {item['target']}")
+                        os.unlink(item['target'])
+                        print(f"Updating symlink: {item['target']}")
                     except OSError as e:
-                        print(f"\nFailed to create link for {item['target']}.")
-                        print("CRITICAL: You must enable 'Developer Mode' in Windows settings, or run PowerShell as Administrator.")
-                        print(f"Error details: {e}\n")
+                        print(f"Failed to remove outdated symlink {item['target']}: {e}")
+                        continue
+
+                try:
+                    os.symlink(item['source'], item['target'])
+                    print(f"Linked: {item['target']}")
+                except OSError as e:
+                    print(f"\nFailed to create link for {item['target']}.")
+                    print("CRITICAL: You must enable 'Developer Mode' in Windows settings, or run PowerShell as Administrator.")
+                    print(f"Error details: {e}\n")
                             
     except Exception as e:
         print("\n=== SCRIPT CRASHED ===")
