@@ -21,7 +21,7 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
         print(f"CRITICAL ERROR: '{input_xml}' is 0 bytes.")
         return
 
-    safe_lib_name = "".join(c for c in lib_name if c not in r'<>:"/\|?*')
+    safe_lib_name = "".join(c for c in lib_name if c not in r'<>:"/\|?*').strip()
     target_root = os.path.join(base_dir, safe_lib_name)
     
     try:
@@ -43,7 +43,7 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
             if not show_name or not season_num or not episode_num:
                 continue
                 
-            safe_show_name = "".join(c for c in show_name if c not in r'<>:"/\|?*')
+            safe_show_name = "".join(c for c in show_name if c not in r'<>:"/\|?*').strip()
             season_str = f"Season {int(season_num):02d}" if season_num.isdigit() else f"Season {season_num}"
             
             for part in elem.findall(".//Part"):
