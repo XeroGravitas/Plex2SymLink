@@ -50,13 +50,13 @@ This tool allows you to maintain your original directory structures and multi-ep
    _(Note: If it blocks script execution, type `Set-ExecutionPolicy Unrestricted -Scope Process` first, allow scripts, then run the script)._
 5. Follow the Prompts:
 
-- Enter your Plex Server URL (e.g., `http://192.168.1.50:32400`).
+   - Enter your Plex Server URL (e.g., `http://192.168.1.50:32400`).
 
-- Enter your **Plex Token**. (Find this by clicking _Get Info_ on any media item in Plex, then _View XML_. The token is at the very end of the URL). More info: [Plex Support](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
+   - Enter your **Plex Token**. (Find this by clicking _Get Info_ on any media item in Plex, then _View XML_. The token is at the very end of    the URL). More info: [Plex Support](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
 
-- Provide the target output directory path where you want your Jellyfin symlinks to live (e.g., `C:\JellyfinSymLinks`).
+   - Provide the target output directory path where you want your Jellyfin symlinks to live (e.g., `C:\JellyfinSymLinks`).
 
-- Select the library key corresponding to the TV library you wish to export.
+   - Select the library key corresponding to the TV library you wish to export.
 
 6. Review the Audit: The script will download the library metadata and generate a `symlink_tree.txt` audit file in your directory. Review it to confirm the layout is correct.
 
@@ -92,7 +92,7 @@ I also recommend installing and running [WatchState](https://github.com/arabcode
 
 **Incremental Runs:** The script is safe to run against an existing symlink tree. Matching symlinks are skipped, new items are added, and broken or outdated symlinks are recreated. Existing regular files and other non-link targets are not overwritten; review those entries in the audit output if they conflict with a generated path.
 
-**Multi-Episode Files:** Plex may count a file named like `S01E01-E02.mkv` as two episodes, while Jellyfin may display it as one media item. This script creates one symlink per physical file, using the multi-episode filename, so Plex and Jellyfin episode totals may differ even when all source files are linked correctly.
+**Multi-Episode Files:** Plex may count a file named like `S01E01-E02.mkv` as two episodes, while Jellyfin may display it as one media item. This script creates one symlink per physical file, using the multi-episode filename, so Plex and Jellyfin episode totals may differ even when all source files are linked correctly. I recommend manually checking against known multi-part episodes in your library.
 
 **Windows Naming:** Windows does not preserve trailing spaces or periods in folder names. Plex names are sanitised before paths are generated, and the audit log should be treated as the source of truth for the resulting folder names.
 
