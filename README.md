@@ -19,8 +19,11 @@ This tool allows you to maintain your original directory structures and multi-ep
 ## Features
 
 - **Dynamic Library Fetching:** Connects directly to your Plex server to list and select available TV show libraries.
+
 - **Smart Multi-Episode Grouping:** Automatically detects physical files containing multiple episodes (e.g., `S01E01-E03.mkv`) and formats the symlinks to match Jellyfin's multi-episode naming standards.
+
 - **Hierarchical Audit Logs:** Generates an indented `symlink_tree.txt` text diagram so you can review the exact mapping before writing any links to disk.
+ 
 - **Sanitised Naming:** Automatically strips out illegal Windows characters (such as colons or question marks) from show and library names.
 
 ---
