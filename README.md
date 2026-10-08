@@ -23,8 +23,10 @@ This tool allows you to maintain your original directory structures and multi-ep
 - **Smart Multi-Episode Grouping:** Automatically detects physical files containing multiple episodes (e.g., `S01E01-E03.mkv`) and formats the symlinks to match Jellyfin's multi-episode naming standards.
 
 - **Hierarchical Audit Logs:** Generates an indented `symlink_tree.txt` text diagram so you can review the exact mapping before writing any links to disk.
- 
-- **Sanitised Naming:** Automatically strips out illegal Windows characters (such as colons or question marks) from show and library names.
+
+- **Incremental Updates:** Existing symlinks that still point to the correct source are preserved. New Plex items are added, and broken or outdated symlinks are replaced.
+
+- **Sanitised Naming:** Removes illegal Windows characters and trims leading or trailing whitespace from show and library names so generated paths match Windows folder names.
 
 ---
 
@@ -60,7 +62,7 @@ This tool allows you to maintain your original directory structures and multi-ep
 
 7. Confirm Execution: Type Y at the prompt to build the symlink structure.
 
-8. The script with then write the folders and symbolic links into your target directory.
+8. The script will then write the folders and symbolic links into your target directory. Existing matching links are left in place, so subsequent runs can update the library incrementally.
 
 9. Create a new library in Jellyfin and point it at your symbolic link folder (e.g., `C:\JellyfinSymLinks\TV Shows`).
 
@@ -88,6 +90,10 @@ I also recommend installing and running [WatchState](https://github.com/arabcode
 
 **Windows Only:** This has been written and tested on Windows only. If anyone wants to fork this for Docker, please feel free!
 
-**Existing Libraries:** I recommend deleting your existing library and starting from scratch, rather than re-indexing an existing library. It'll probably work, but I wasn't going to test it!
+**Incremental Runs:** The script is safe to run against an existing symlink tree. Matching symlinks are skipped, new items are added, and broken or outdated symlinks are recreated. Existing regular files and other non-link targets are not overwritten; review those entries in the audit output if they conflict with a generated path.
+
+**Multi-Episode Files:** Plex may count a file named like `S01E01-E02.mkv` as two episodes, while Jellyfin may display it as one media item. This script creates one symlink per physical file, using the multi-episode filename, so Plex and Jellyfin episode totals may differ even when all source files are linked correctly.
+
+**Windows Naming:** Windows does not preserve trailing spaces or periods in folder names. Plex names are sanitised before paths are generated, and the audit log should be treated as the source of truth for the resulting folder names.
 
 ### Good luck!
