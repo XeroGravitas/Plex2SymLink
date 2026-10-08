@@ -134,17 +134,14 @@ def build_symlink_tree(input_xml, base_dir, lib_name, mode):
                         print(f"Skipped existing non-link target: {item['target']}")
                         continue
 
-                    existing_source = os.readlink(item['target'])
-                    if not os.path.isabs(existing_source):
-                        existing_source = os.path.join(
-                            os.path.dirname(item['target']), existing_source
-                        )
-                    existing_source = os.path.normcase(os.path.abspath(existing_source))
-                    current_source = os.path.normcase(os.path.abspath(item['source']))
-
-                    if existing_source == current_source and os.path.exists(item['source']):
-                        print(f"Skipped existing symlink: {item['target']}")
-                        continue
+                    try:
+                        if os.path.exists(item['source']) and os.path.samefile(
+                            item['target'], item['source']
+                        ):
+                            print(f"Skipped existing symlink: {item['target']}")
+                            continue
+                    except OSError:
+                        pass
 
                     try:
                         os.unlink(item['target'])
