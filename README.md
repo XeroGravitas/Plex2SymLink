@@ -72,6 +72,8 @@ Once Jellyfin has finished updating the metadata, I recommend installing [Plexyf
 
 I also recommend installing and running [WatchState](https://github.com/arabcoders/watchstate) to sync your Plex play history.
 
+*Update:* After running WatchState's Media Health audit, you'll get warnings about the file path discrepancies. These can be safely ignored.
+
 ---
 
 ## File Structure
