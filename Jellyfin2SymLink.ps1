@@ -20,10 +20,17 @@ if (!(Test-Path "Jellyfin_TV_SymLinker.py")) {
 
 $jellyfin_url = (Read-Host "Enter your Jellyfin Server URL (e.g., http://192.168.1.50:8096)").Trim()
 $api_key = (Read-Host "Enter your Jellyfin API key").Trim()
+$api_key = $api_key.Trim('"').Trim("'").Trim()
+if ([string]::IsNullOrWhiteSpace($api_key)) {
+    Write-Host "Error: The Jellyfin API key cannot be empty." -ForegroundColor Red
+    Pause
+    exit
+}
 $symdir = Read-Host "Enter the output path for your symbolic link directory (e.g., C:\JellyfinSymLinks)"
+$authorization = 'MediaBrowser Client="Jellyfin2SymLink", Device="PowerShell", DeviceId="Jellyfin2SymLink", Version="1.0", Token="' + $api_key + '"'
 $headers = @{
     "X-Emby-Token"         = $api_key
-    "X-Emby-Authorization" = "MediaBrowser Client=`"Plex2SymLink`", Device=`"PowerShell`", DeviceId=`"Plex2SymLink`", Version=`"1.0`", Token=`"$api_key`""
+    "X-Emby-Authorization" = $authorization
     "User-Agent"           = "Jellyfin2SymLink/1.0"
 }
 $base_url = $jellyfin_url.TrimEnd('/')
