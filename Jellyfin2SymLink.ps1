@@ -30,15 +30,17 @@ $symdir = Read-Host "Enter the output path for your symbolic link directory (e.g
 $authorization = 'MediaBrowser Client="Jellyfin2SymLink", Device="PowerShell", DeviceId="Jellyfin2SymLink", Version="1.0", Token="' + $api_key + '"'
 $headers = @{
     "X-Emby-Token"         = $api_key
+    "X-MediaBrowser-Token" = $api_key
     "X-Emby-Authorization" = $authorization
     "User-Agent"           = "Jellyfin2SymLink/1.0"
 }
 $base_url = $jellyfin_url.TrimEnd('/')
+$auth_query = "api_key=$([uri]::EscapeDataString($api_key))"
 
 try {
     $library_id = $null
     try {
-        $libraries_response = Invoke-RestMethod -Uri "$base_url/Library/VirtualFolders" -Headers $headers
+        $libraries_response = Invoke-RestMethod -Uri "$base_url/Library/VirtualFolders?$auth_query" -Headers $headers
         $libraries = @($libraries_response | Where-Object { $_.CollectionType -eq "tvshows" })
         if ($libraries.Count -eq 0) {
             throw "No Jellyfin TV libraries were found."
@@ -73,7 +75,7 @@ try {
     $page_size = 1000
     do {
         $parent_query = if ($library_id) { "ParentId=$library_id&" } else { "" }
-        $items_url = "$base_url/Items?${parent_query}IncludeItemTypes=Episode&Recursive=true&Fields=Path,SeriesName,ParentIndexNumber,IndexNumber&StartIndex=$start_index&Limit=$page_size"
+        $items_url = "$base_url/Items?${auth_query}&${parent_query}IncludeItemTypes=Episode&Recursive=true&Fields=Path,SeriesName,ParentIndexNumber,IndexNumber&StartIndex=$start_index&Limit=$page_size"
         $page = Invoke-RestMethod -Uri $items_url -Headers $headers
         $episodes += @($page.Items)
         $start_index += @($page.Items).Count
