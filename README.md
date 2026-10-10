@@ -1,6 +1,6 @@
 # This branch is probably less useful than Main.
 
-You can now generate symlink directories from Jellyfin, but for it to be useful you'd need to create duplicate libraries in Jellyin:
+You can now generate symlink directories from Jellyfin, but for it to be useful you'd need to create duplicate libraries in Jellyfin:
 1) Library pointing to the real file locations
 2) A copy with the symbolic links
 (I suppose you could make an Admin account with all the libraries, and a user account with access only to the clean ones)
@@ -8,7 +8,7 @@ You can now generate symlink directories from Jellyfin, but for it to be useful 
 Even for new Jellyfin users without existing Plex servers, I would recommend sticking with the Plex workflow:
 1) Set up your library in Plex - let it generate the database of real file locations
 2) Use the latest Plex2SymLink release to generate your symlink directory
-3) Point Jellyfin at the symlinks *only*
+3) Point Jellyfin at the symlinks *only* (Jellyfin never sees the real locations)
 4) Then use WatchState to keep everything in sync, and run Plex2SymLink periodically.
 
 To be continued... possibly!
