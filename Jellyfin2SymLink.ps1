@@ -40,8 +40,8 @@ if ($auth_mode -eq "U") {
         $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($password_ptr)
         $login_body = @{ Username = $username; Pw = $password } | ConvertTo-Json
         $login_headers = @{
-            "X-Emby-Authorization" = $client_authorization
-            "User-Agent"           = "Jellyfin2SymLink/1.0"
+            "Authorization" = $client_authorization
+            "User-Agent"    = "Jellyfin2SymLink/1.0"
         }
         $login = Invoke-RestMethod -Method Post -Uri "$base_url/Users/AuthenticateByName" -Headers $login_headers -ContentType "application/json" -Body $login_body -ErrorAction Stop
         $api_key = $login.AccessToken
@@ -84,12 +84,10 @@ else {
 
 $authorization = $client_authorization + ', Token="' + $api_key + '"'
 $headers = @{
-    "X-Emby-Token"         = $api_key
-    "X-MediaBrowser-Token" = $api_key
-    "X-Emby-Authorization" = $authorization
-    "User-Agent"           = "Jellyfin2SymLink/1.0"
+    "Authorization" = $authorization
+    "User-Agent"    = "Jellyfin2SymLink/1.0"
 }
-$auth_query = "api_key=$([uri]::EscapeDataString($api_key))"
+$auth_query = "ApiKey=$([uri]::EscapeDataString($api_key))"
 
 try {
     $library_id = $null
