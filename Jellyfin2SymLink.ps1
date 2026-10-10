@@ -22,6 +22,7 @@ $jellyfin_url = (Read-Host "Enter your Jellyfin Server URL (e.g., http://192.168
 $symdir = Read-Host "Enter the output path for your symbolic link directory (e.g., C:\JellyfinSymLinks)"
 $base_url = $jellyfin_url.TrimEnd('/')
 $auth_mode = (Read-Host "Authenticate with API key or Jellyfin account? (K/U)").Trim().ToUpperInvariant()
+$client_authorization = 'MediaBrowser Client="Jellyfin2SymLink", Device="PowerShell", DeviceId="Jellyfin2SymLink", Version="1.0"'
 
 if ($auth_mode -eq "U") {
     $username = Read-Host "Enter your Jellyfin username"
@@ -30,12 +31,21 @@ if ($auth_mode -eq "U") {
     try {
         $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($password_ptr)
         $login_body = @{ Username = $username; Pw = $password } | ConvertTo-Json
-        $login = Invoke-RestMethod -Method Post -Uri "$base_url/Users/AuthenticateByName" -ContentType "application/json" -Body $login_body
+        $login_headers = @{
+            "X-Emby-Authorization" = $client_authorization
+            "User-Agent"           = "Jellyfin2SymLink/1.0"
+        }
+        $login = Invoke-RestMethod -Method Post -Uri "$base_url/Users/AuthenticateByName" -Headers $login_headers -ContentType "application/json" -Body $login_body -ErrorAction Stop
         $api_key = $login.AccessToken
         if ([string]::IsNullOrWhiteSpace($api_key)) {
             throw "Jellyfin did not return an authentication token."
         }
         Write-Host "Jellyfin account authentication succeeded." -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Jellyfin account authentication failed: $($_.Exception.Message)" -ForegroundColor Red
+        Pause
+        exit
     }
     finally {
         if ($password_ptr -ne [IntPtr]::Zero) {
@@ -52,7 +62,7 @@ else {
     }
 }
 
-$authorization = 'MediaBrowser Client="Jellyfin2SymLink", Device="PowerShell", DeviceId="Jellyfin2SymLink", Version="1.0", Token="' + $api_key + '"'
+$authorization = $client_authorization + ', Token="' + $api_key + '"'
 $headers = @{
     "X-Emby-Token"         = $api_key
     "X-MediaBrowser-Token" = $api_key
