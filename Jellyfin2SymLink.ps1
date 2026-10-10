@@ -36,33 +36,44 @@ $headers = @{
 $base_url = $jellyfin_url.TrimEnd('/')
 
 try {
-    $libraries_response = Invoke-RestMethod -Uri "$base_url/Library/VirtualFolders" -Headers $headers
-    $libraries = @($libraries_response | Where-Object { $_.CollectionType -eq "tvshows" })
-    if ($libraries.Count -eq 0) {
-        Write-Host "No Jellyfin TV libraries were found." -ForegroundColor Red
-        Pause
-        exit
-    }
+    $library_id = $null
+    try {
+        $libraries_response = Invoke-RestMethod -Uri "$base_url/Library/VirtualFolders" -Headers $headers
+        $libraries = @($libraries_response | Where-Object { $_.CollectionType -eq "tvshows" })
+        if ($libraries.Count -eq 0) {
+            throw "No Jellyfin TV libraries were found."
+        }
 
-    Write-Host "`nAvailable TV Libraries:" -ForegroundColor Yellow
-    for ($index = 0; $index -lt $libraries.Count; $index++) {
-        Write-Host "  $($index + 1): $($libraries[$index].Name)"
+        Write-Host "`nAvailable TV Libraries:" -ForegroundColor Yellow
+        for ($index = 0; $index -lt $libraries.Count; $index++) {
+            Write-Host "  $($index + 1): $($libraries[$index].Name)"
+        }
+        $selection = [int](Read-Host "`nSelect a library number") - 1
+        if ($selection -lt 0 -or $selection -ge $libraries.Count) {
+            throw "Invalid library selection."
+        }
+        $library = $libraries[$selection]
+        $library_id = $library.ItemId
     }
-    $selection = [int](Read-Host "`nSelect a library number") - 1
-    if ($selection -lt 0 -or $selection -ge $libraries.Count) {
-        Write-Host "Invalid library selection." -ForegroundColor Red
-        Pause
-        exit
+    catch {
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode -eq 401) {
+            Write-Host "The API key cannot enumerate virtual folders on this Jellyfin server." -ForegroundColor Yellow
+            Write-Host "Falling back to all matched TV episodes visible to this API key." -ForegroundColor Yellow
+            $library_name = Read-Host "Enter the name for the repaired output library"
+            $library = @{ Name = $library_name }
+        }
+        else {
+            throw
+        }
     }
-    $library = $libraries[$selection]
-    $library_id = $library.ItemId
 
     Write-Host "`nFetching matched Jellyfin episodes..." -ForegroundColor Cyan
     $episodes = @()
     $start_index = 0
     $page_size = 1000
     do {
-        $items_url = "$base_url/Items?ParentId=$library_id&IncludeItemTypes=Episode&Recursive=true&Fields=Path,SeriesName,ParentIndexNumber,IndexNumber&StartIndex=$start_index&Limit=$page_size"
+        $parent_query = if ($library_id) { "ParentId=$library_id&" } else { "" }
+        $items_url = "$base_url/Items?${parent_query}IncludeItemTypes=Episode&Recursive=true&Fields=Path,SeriesName,ParentIndexNumber,IndexNumber&StartIndex=$start_index&Limit=$page_size"
         $page = Invoke-RestMethod -Uri $items_url -Headers $headers
         $episodes += @($page.Items)
         $start_index += @($page.Items).Count
