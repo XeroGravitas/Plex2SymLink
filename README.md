@@ -1,9 +1,12 @@
-# Plex to Jellyfin TV Symlink Tool
+# Jellyfin Broken Library Repair Tool
 
-This repository supports two metadata sources:
+This tool automatically repairs a Jellyfin TV library when Jellyfin has matched the shows, seasons, and episodes correctly, but the physical folder and file structure is disorganized. It reads Jellyfin's matched metadata, then creates a clean symlink library without moving, renaming, or duplicating the original media.
+
+The repository also includes the original Plex exporter for users migrating Plex metadata into Jellyfin:
 
 - `Plex2SymLink.ps1` exports a Plex TV library.
-- `Jellyfin2SymLink.ps1` repairs a Jellyfin TV library whose files are matched correctly but stored in an unusable folder structure.
+- `Jellyfin2SymLink.ps1` automatically repairs a broken Jellyfin TV library.
+- `Plex2SymLink.ps1` exports a Plex TV library into a Jellyfin-friendly structure.
 
 ### Disclaimer
 
@@ -13,23 +16,27 @@ Please use with care. Always run a test on a single file or small library first 
 
 ---
 
-Are your Plex TV libraries a rat's nest of random, badly labelled files held together solely by the magic of Plex metadata? Does Jellyfin choke on this and generate a nightmarish library of duplicates and failed matches?
+Is your Jellyfin library full of duplicate matches, missing episodes, or unusable paths even though Jellyfin has already identified the correct shows and episodes?
 
-Introducing... a lightweight automation toolkit designed to parse a Plex TV library via its XML API and generate a pristine, Jellyfin-friendly symbolic link directory tree.
+`Jellyfin2SymLink.ps1` turns Jellyfin's existing metadata matches into a pristine directory tree that Jellyfin can scan reliably.
 
-This tool allows you to maintain your original directory structures and multi-episode file groupings on your storage drives while feeding Jellyfin a clean, standardized folder structure that consumes zero extra physical storage space.
+Your original media remains untouched. The repaired library consumes almost no additional storage because it contains symbolic links rather than copies.
 
 ---
 
 ## Features
 
-- **Dynamic Library Fetching:** Connects directly to your Plex server to list and select available TV show libraries.
+- **Automatic Jellyfin Repair:** Reads matched episode metadata and source paths directly from Jellyfin.
+
+- **API Key Authentication:** Uses Jellyfin's current `MediaBrowser` authorization format.
+
+- **Clean TV Structure:** Creates `Show/Season ##/Show - S##E##` paths that Jellyfin can scan consistently.
 
 - **Smart Multi-Episode Grouping:** Automatically detects physical files containing multiple episodes (e.g., `S01E01-E03.mkv`) and formats the symlinks to match Jellyfin's multi-episode naming standards.
 
 - **Hierarchical Audit Logs:** Generates an indented `symlink_tree.txt` text diagram so you can review the exact mapping before writing any links to disk.
 
-- **Incremental Updates:** Existing symlinks that still point to the correct source are preserved. New Plex items are added, and broken or outdated symlinks are replaced.
+- **Incremental Updates:** Existing symlinks that still point to the correct source are preserved. New items are added, and outdated symlinks are replaced.
 
 - **Sanitised Naming:** Removes illegal Windows characters and trims leading or trailing whitespace from show and library names so generated paths match Windows folder names.
 
@@ -44,7 +51,22 @@ This tool allows you to maintain your original directory structures and multi-ep
 
 ---
 
-## Setup & Usage
+## Repair a Jellyfin Library
+
+Use this workflow when Jellyfin has already matched your media but the underlying folder structure is broken or inconsistent.
+
+1. Create an API key in **Jellyfin Dashboard > Advanced > API Keys**.
+2. Open PowerShell as Administrator, or enable Windows Developer Mode for symbolic-link creation.
+3. Run `./Jellyfin2SymLink.ps1`.
+4. Enter the Jellyfin server URL, output directory, and API key when prompted.
+5. Select the source TV library. If Jellyfin does not allow virtual-folder enumeration for the key, the script will query all visible matched TV episodes and ask for an output library name.
+6. Review `jellyfin_symlink_tree.txt`.
+7. Confirm with `Y` to create the symlink directory.
+8. Add the generated directory to Jellyfin as a new TV library. Keep the original library until the repaired library has been scanned and verified.
+
+The script uses Jellyfin's matched `SeriesName`, season number, episode number, and physical `Path`. It does not move or rename source media, and it never overwrites regular files in the output directory.
+
+## Export a Plex Library
 
 1. Download the release and unzip `Plex2SymLink.ps1` and `TV_SymLinker.py` to a folder.
 2. Open **PowerShell as Administrator** (required for symlink privileges).
@@ -70,26 +92,13 @@ This tool allows you to maintain your original directory structures and multi-ep
 
 9. Create a new library in Jellyfin and point it at your symbolic link folder (e.g., `C:\JellyfinSymLinks\TV Shows`).
 
-## Repair an Existing Jellyfin Library
-
-Use `Jellyfin2SymLink.ps1` when Jellyfin already has the correct show, season, and episode metadata, but the underlying files are scattered or incorrectly named:
-
-1. Create a Jellyfin API key in **Dashboard > Advanced > API Keys**.
-2. Open PowerShell as Administrator, or enable Windows Developer Mode for symbolic-link creation.
-3. Run `./Jellyfin2SymLink.ps1` and enter the server URL, API key, and output directory.
-4. Select the source TV library. The script downloads matched episode metadata and the physical file paths from Jellyfin.
-5. Review `jellyfin_symlink_tree.txt`, then confirm with `Y` to create the links.
-6. Add the generated library directory to Jellyfin as a new TV library. Keep the original library until the new one has been scanned and verified.
-
-The Jellyfin worker uses each episode's matched `SeriesName`, season number, episode number, and `Path`; it does not attempt to rename or move source media. Existing regular files in the output are never overwritten.
-
 ### Optional finishing touch
 
 Once Jellyfin has finished updating the metadata, I recommend installing [Plexyfin](https://github.com/cleverdevil/plexyfin) as a Jellyfin plugin and running it with the `Force Replace All Artwork` flag. This will import all of your custom movie posters from Plex, completing your brand new mirrored library!
 
 I also recommend installing and running [WatchState](https://github.com/arabcoders/watchstate) to sync your Plex play history.
 
-*Update:* After running WatchState's Media Health audit, you'll get warnings about the file path discrepancies. These can be safely ignored.
+_Update:_ After running WatchState's Media Health audit, you'll get warnings about the file path discrepancies. These can be safely ignored.
 
 ---
 
