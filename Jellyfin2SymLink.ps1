@@ -21,11 +21,19 @@ if (!(Test-Path "Jellyfin_TV_SymLinker.py")) {
 $jellyfin_url = (Read-Host "Enter your Jellyfin Server URL (e.g., http://192.168.1.50:8096)").Trim()
 $symdir = Read-Host "Enter the output path for your symbolic link directory (e.g., C:\JellyfinSymLinks)"
 $base_url = $jellyfin_url.TrimEnd('/')
-$auth_mode = (Read-Host "Authenticate with API key or Jellyfin account? (K/U)").Trim().ToUpperInvariant()
+$auth_mode = (Read-Host "Authenticate with API key or Jellyfin account? (K/U, default K)").Trim().ToUpperInvariant()
+if ([string]::IsNullOrEmpty($auth_mode)) {
+    $auth_mode = "K"
+}
+if ($auth_mode -ne "K" -and $auth_mode -ne "U") {
+    Write-Host "Error: Choose K for API key or U for Jellyfin account authentication." -ForegroundColor Red
+    Pause
+    exit
+}
 $client_authorization = 'MediaBrowser Client="Jellyfin2SymLink", Device="PowerShell", DeviceId="Jellyfin2SymLink", Version="1.0"'
 
 if ($auth_mode -eq "U") {
-    $username = Read-Host "Enter your Jellyfin username"
+    $username = (Read-Host "Enter your Jellyfin username").Trim()
     $secure_password = Read-Host "Enter your Jellyfin password" -AsSecureString
     $password_ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure_password)
     try {
@@ -44,6 +52,18 @@ if ($auth_mode -eq "U") {
     }
     catch {
         Write-Host "Jellyfin account authentication failed: $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.Exception.Response) {
+            try {
+                $response_reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $response_body = $response_reader.ReadToEnd()
+                if ($response_body) {
+                    Write-Host "Jellyfin response: $response_body" -ForegroundColor Red
+                }
+            }
+            catch {
+                # Some PowerShell/.NET versions do not expose the error response body.
+            }
+        }
         Pause
         exit
     }
