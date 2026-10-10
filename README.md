@@ -19,9 +19,8 @@ This tool automatically repairs a Jellyfin TV library when Jellyfin has matched 
 
 The repository also includes the original Plex exporter for users migrating Plex metadata into Jellyfin:
 
-- `Plex2SymLink.ps1` exports a Plex TV library.
-- `Jellyfin2SymLink.ps1` automatically repairs a broken Jellyfin TV library.
 - `Plex2SymLink.ps1` exports a Plex TV library into a Jellyfin-friendly structure.
+- `Jellyfin2SymLink.ps1` automatically builds a clean hierarchical directory for a garbled Jellyfin library.
 
 ### Disclaimer
 
