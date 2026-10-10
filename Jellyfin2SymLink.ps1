@@ -18,10 +18,14 @@ if (!(Test-Path "Jellyfin_TV_SymLinker.py")) {
     exit
 }
 
-$jellyfin_url = Read-Host "Enter your Jellyfin Server URL (e.g., http://192.168.1.50:8096)"
-$api_key = Read-Host "Enter your Jellyfin API key"
+$jellyfin_url = (Read-Host "Enter your Jellyfin Server URL (e.g., http://192.168.1.50:8096)").Trim()
+$api_key = (Read-Host "Enter your Jellyfin API key").Trim()
 $symdir = Read-Host "Enter the output path for your symbolic link directory (e.g., C:\JellyfinSymLinks)"
-$headers = @{ "X-Emby-Token" = $api_key }
+$headers = @{
+    "X-Emby-Token"         = $api_key
+    "X-Emby-Authorization" = "MediaBrowser Client=`"Plex2SymLink`", Device=`"PowerShell`", DeviceId=`"Plex2SymLink`", Version=`"1.0`", Token=`"$api_key`""
+    "User-Agent"           = "Jellyfin2SymLink/1.0"
+}
 $base_url = $jellyfin_url.TrimEnd('/')
 
 try {
@@ -60,8 +64,13 @@ try {
     $episodes | ConvertTo-Json -Depth 6 | Set-Content -Path "jellyfin_metadata.json" -Encoding UTF8
 }
 catch {
-    Write-Host "Failed to fetch Jellyfin library metadata." -ForegroundColor Red
-    Write-Host "Error details: $_" -ForegroundColor Red
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode -eq 401) {
+        Write-Host "Jellyfin rejected authentication (HTTP 401). Confirm that you entered an API key, not your Jellyfin password, and that it was copied without extra characters." -ForegroundColor Red
+    }
+    else {
+        Write-Host "Failed to fetch Jellyfin library metadata." -ForegroundColor Red
+    }
+    Write-Host "Error details: $($_.Exception.Message)" -ForegroundColor Red
     Pause
     exit
 }
